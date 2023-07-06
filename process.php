@@ -2,6 +2,8 @@
 
 session_start();
 
+require_once 'Cart.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['email']) && isset($_POST['password'])) {
         $email = $_POST['email'];
@@ -22,13 +24,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($registered_user['email'] == $email && $registered_user['password'] == $password) {
                 $_SESSION['login'] = true;
                 $_SESSION['email'] = $email;
-                $_SESSION['login_success'] = true;
                 $login_success = true;
                 break;
             }
         }
 
         if ($login_success) {
+            $cart = new Cart($_SESSION);
+            $_SESSION['login_success'] = true;
             header("Location: index.php");
             exit;
         } else {

@@ -1,15 +1,17 @@
-<?php   
+<?php
 session_start();
+
+require_once 'Cart.php'; // Import kelas Cart
 
 if (empty($_SESSION['login'])) {
     header("Location: login.php");
     exit;
 }
-if ($_SESSION['login_success']) {
+
+if (isset($_SESSION['login_success']) && $_SESSION['login_success']) {
     echo '<script>alert("Anda berhasil login");</script>';
     $_SESSION['login_success'] = false;
 }
-
 
 // Inisialisasi daftar pesanan
 $pesanan = [
@@ -21,47 +23,20 @@ $pesanan = [
     'French Fries' => 18000
 ];
 
+$cart = new Cart($_SESSION); // Buat objek Cart dengan data sesi
+
 // Memperbarui daftar pesanan jika ada input POST yang dikirim
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_to_cart'])) {
         $menu = $_POST['add_to_cart'];
         if (isset($pesanan[$menu])) {
-            if (!isset($_SESSION['cart'])) {
-                $_SESSION['cart'] = []; // Inisialisasi keranjang jika belum ada
-            }
-            $cartIndex = null;
-            foreach ($_SESSION['cart'] as $index => $item) {
-                if ($item['menu'] === $menu) {
-                    $cartIndex = $index;
-                    break;
-                }
-            }
-            if ($cartIndex !== null) {
-                // Jika item pesanan sudah ada dalam keranjang, hapus item dari keranjang dan kurangi total harga
-                $_SESSION['total'] -= $_SESSION['cart'][$cartIndex]['harga'];
-                unset($_SESSION['cart'][$cartIndex]);
-            } else {
-                // Jika item pesanan belum ada dalam keranjang, tambahkan item ke keranjang dan tambahkan total harga
-                $_SESSION['cart'][] = [
-                    'menu' => $menu,
-                    'harga' => $pesanan[$menu]
-                ];
-                $_SESSION['total'] += $pesanan[$menu];
-            }
+            $cart->addToCart($menu, $pesanan[$menu]);
         }
     }
 }
 
-// Inisialisasi total harga jika sesi total belum ada
-if (!isset($_SESSION['total'])) {
-    $_SESSION['total'] = 0;
-}
-
-// Menghapus semua item pesanan saat halaman di-refresh
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_SESSION['cart'])) {
-    unset($_SESSION['cart']);
-    $_SESSION['total'] = 0; // Menetapkan total harga ke 0 saat halaman diperbarui
-}
+$_SESSION = $cart->getSessionData(); // Simpan data sesi setelah pemrosesan
+$_SESSION['login'] = true; 
 ?>
 <!doctype html>
 <html lang="en">
@@ -105,15 +80,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_SESSION['cart'])) {
                         <form action="" method="POST">
                             <input type="hidden" name="add_to_cart" value="<?= $menu ?>">
                             <button type="submit"
-                                class="btn mb-3 btn-<?= (isset($_SESSION['cart']) && in_array($menu, array_column($_SESSION['cart'], 'menu'))) ? 'success' : 'light' ?> btn-block"><?= $menu ?>
+                                class="btn mb-3 btn-<?= ($cart->isInCart($menu)) ? 'success' : 'light' ?> btn-block"><?= $menu ?>
                                 Rp. <?= $harga ?></button>
                         </form>
                         <?php endforeach; ?>
 
                         <br>
 
-                        <?php if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) : ?>
-                        <p>Total Harga: Rp. <?= $_SESSION['total'] ?></p>
+                        <?php if ($cart->getCart() !== null && !empty($cart->getCart())) : ?>
+                        <p>Total Harga: Rp. <?= $cart->getTotal() ?></p>
                         <?php endif; ?>
 
                         <center>
